@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Add/View User by Susilo Utomo</title>
+    <script src="https://www.gstatic.com/firebasejs/5.0.4/firebase.js"></script>
+	<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.0/jquery.min.js"></script>
+	<script src="https://unpkg.com/vue"></script>
+    <script src="https://unpkg.com/vuefire/dist/vuefire.js"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/vue/2.5.2/vue.min.js"></script>
+	<script src="cleqou.js"></script>
+
+</head>
+<body>
+<div id ="show">
+  <table>
+  <tr>
+  <td>
+  <img id="profPic" src="" style="width:100px;" >
+  
+  </img>
+</td><td>
+<br>
+    <label>
+      First Name: <input type ="text" id ="dtlFname" readonly ="true">
+    </label>
+	<br>
+    <label>
+      Last Name: <input type ="text" id ="dtlLname" readonly ="true">
+    </label>
+	<br>
+    <label>
+      Age:  <input type ="text" id ="dtlAge" readonly ="true">
+    </label>
+	<br>
+	  <label>
+      Country: <input type ="text" id ="dtlCtry" readonly ="true">
+    </label>
+	<br>
+	</td></tr></table>
+</div>
+<a href ="#" onclick="addUser()">Add User </a>
+<div id ="app">
+  <form @submit.prevent="handleSubmit" method="post" ref="usrForm">
+  <table>
+  <tr>
+  <td>
+  <input type="file" @change="onFileChanged" class="form-control" id="profPic">
+</td><td>
+<br>
+    <label>
+      First Name:
+      <input type="text" name="fname" v-model="fname" id="inpFname"/>
+    </label>
+	<br>
+    <label>
+      Last Name:
+      <input type="text" name="lname" v-model="lname" id="inpLname"/>
+    </label>
+	<br>
+    <label>
+      Age:
+      <input type="text" name="age" v-model="age" id="inpAge"/>
+    </label>
+	<br>
+	  <label>
+      Country:
+      <input type="text" name="ctry" v-model="ctry" id="inpCtry"/>
+    </label>
+	<br>
+    <input type="submit" id ="submitUsr">
+	</td></tr></table>
+  </form>
+  
+  
+  </div>
+  	<div id="usrTable">
+  Search :  <input type="text" v-model="search">
+  <table  border ="1" >
+	<thead>
+	  <tr>
+		<td> Name</td>
+		<td> Country</td>
+		<td> Age</td>
+	</thead>
+	<tbody>
+		<tr v-for="(usr, key) in filteredUser">
+			<td @click="viewDetail(usr.uuid)"><a href="#">{{usr.fname}} {{usr.lname}}</a> </td>
+			<td> {{usr.ctry}} </td>
+			<td> {{usr.age}} </td>
+		</tr>
+	</tbody>
+  </table>
+  	</div>
+
+  <script> 
+  var uniqueId = function() {
+  return 'id-' + Math.random().toString(36).substr(2, 16)+'-'+(new Date).getTime();
+};
+var uuid = uniqueId();
+var downloadURL = "";
+var file ="";
+var dataUsr = "";
+var usrObj = "";
+var errMsg ="";
+  document.getElementById("show").style.visibility = "hidden";
+  // Initialize Firebase
+  var config = {
+    apiKey: "AIzaSyDrnWhgjCaBPSouEIDXqE9JSi5CE41qL_o",
+    authDomain: "cleqou.firebaseapp.com",
+    databaseURL: "https://cleqou.firebaseio.com",
+    projectId: "cleqou",
+    storageBucket: "cleqou.appspot.com",
+    messagingSenderId: "1094433253214"
+  };
+  firebase.initializeApp(config);
+     
+var cleqRef = firebase.database().ref().child("usrForm");
+
+
+//list
+cleqRef.on("value",gotData);
+
+//list
+new Vue({
+ el: '#app',
+     search: '',
+   data: {
+		uuid: '',
+        fname: '',
+        lname: '',
+        age: '',
+        ctry: '',
+		imgUrl:''
+  },
+  methods: {
+		handleSubmit: function() {
+			if (validation()){
+				var formData = new FormData(this.$refs.usrForm);
+				var dataSubmit =   {
+				uuid : uuid,
+				fname: formData.get('fname'),
+				lname: formData.get('lname'),
+				age: formData.get('age'),
+				ctry: formData.get('ctry'),
+				imgUrl: downloadURL
+				};
+				cleqRef.push(dataSubmit);
+				location.reload();
+			}
+			else{
+				alert (errMsg);
+			}
+		},
+	   onFileChanged (event) {
+			file = event.target.files[0];
+			uploadImg(file);
+	  }
+ }
+})
+				// foto upload
+	function uploadImg(imgFile) {
+		const refStorage = firebase.storage().ref();
+		var storageRef = refStorage.child(uuid+'/');
+		var photoRef = storageRef.child(imgFile.name);
+		var uploadTask = photoRef.put(imgFile);
+		uploadTask.on('state_changed', function(snapshot){
+		var progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+		console.log('Upload is ' + progress + '% done');
+		switch (snapshot.state) {
+			case firebase.storage.TaskState.PAUSED: // or 'paused'
+				document.getElementById("submitUsr").disabled = true;
+				alert('Upload is running.. Please wait..');
+				console.log('Upload is paused');
+				break;
+			case firebase.storage.TaskState.RUNNING: // or 'running'
+				document.getElementById("submitUsr").disabled = true;
+				alert('Upload is running.. Please wait..');
+				console.log('Upload is running');
+				break;
+			}
+		}, function(error) {
+			// Handle unsuccessful uploads
+		}, function() {
+		  // Handle successful uploads on complete
+		  // For instance, get the download URL: https://firebasestorage.googleapis.com/...
+		  uploadTask.snapshot.ref.getDownloadURL().then(function(downloadURLs) {
+			downloadURL = downloadURLs;
+				document.getElementById("submitUsr").disabled = false;
+				alert('Upload is completed!');
+				console.log('File available at', downloadURL);
+		  });
+		});
+	}		//endupload	
+
+function gotData(data){
+	dataUsr = data.val();
+	var keys = Object.keys(dataUsr);
+	var arr = Object.values(dataUsr);
+	
+	var vm = new Vue({
+      el: '#usrTable',
+	 data: {
+        search: "",
+        usrs: arr
+      },
+	  computed:	{
+			filteredUser:function()	{
+				var self=this;
+				
+				return this.usrs.filter(function(cust)	{
+						return cust.fname.toLowerCase().indexOf(self.search.toLowerCase())>=0;
+				}
+				);
+			}
+		}
+    }
+  );
+
+}
+
+function viewDetail(uuid){
+	if(document.getElementById("show").style.visibility == "hidden"){
+		document.getElementById("show").style.visibility = "visible";
+		document.getElementById("app").style.visibility = "hidden";
+	}
+	selectUserByUuid (uuid);	
+
+	var fname = usrObj.fname;
+	var lname = usrObj.lname;
+	var age = usrObj.age;
+	var ctry = usrObj.ctry;
+	var imgUrl = usrObj.imgUrl;
+	
+	document.getElementById("dtlFname").value = fname;
+	document.getElementById("dtlLname").value = lname;
+	document.getElementById("dtlAge").value = age;
+	document.getElementById("dtlCtry").value = ctry;
+	document.getElementById("profPic").src = imgUrl;
+}
+
+function selectUserByUuid(uuid){
+	Object.keys(dataUsr).some(function(key) {
+		  if (dataUsr[key].uuid == uuid) {
+			 return usrObj = dataUsr[key] ;
+		  }
+		});
+}
+function addUser(){
+	document.getElementById("show").style.visibility = "hidden";
+	document.getElementById("app").style.visibility = "visible";
+}
+ 
+ var validation = function() {
+	errMsg="";
+	var isValid = true;
+	if(isNaN(document.getElementById("inpAge").value) ){
+		errMsg = errMsg + " Age must be a number!"
+		isValid = false;
+	}
+	if (""==document.getElementById("inpFname").value){
+		errMsg = errMsg + " First Name must not be empty!"
+		isValid= false;
+	}
+	return isValid;
+};
+</script>
+
+</body>
+</html>
